@@ -85,6 +85,14 @@
     <script src="arcamera.js" type="text/javascript"></script>
     <script src="itracker.js" type="text/javascript"></script>
     <script>
+      // Some third-party code (opencv.js's Emscripten abort handler) calls the native
+      // alert() on internal errors that don't actually stop the app - confirmed the
+      // tracker keeps working fine after dismissing it. Suppress the popup so gameplay
+      // isn't interrupted, but keep logging to the console so it's still visible if
+      // debugging with devtools connected.
+      window.alert = function (message) {
+        console.error('[Suppressed alert]', message);
+      };
       // Disable double-tap to zoom
       document.addEventListener('touchstart', function (event) {
         if (event.touches.length > 1) {
