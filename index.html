@@ -158,6 +158,15 @@
         updateBannerVisibility();
       }
       function StartAR() {
+        // Best-effort - hides the browser address bar/chrome on platforms that support
+        // it. Must happen synchronously here, as the very first thing in this handler,
+        // since browsers only allow requestFullscreen() as a direct response to a user
+        // gesture (this button's own click) - reliably works on Android Chrome; iOS
+        // Safari has historically not supported the Fullscreen API for arbitrary page
+        // content, so this silently no-ops there instead of breaking anything.
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
         var startARDiv = document.querySelector("#startARDiv");
         startARDiv.style.opacity = 0;
         setTimeout(()=>{
