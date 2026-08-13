@@ -121,7 +121,17 @@
         
         document.getElementById("startARButton").style.visibility = "visible";
         document.getElementById("spinner").style.visibility = "hidden";
-        window.permissionsGranted = IsCameraPermissionGranted();
+        // Missing await here previously assigned the pending Promise itself (always
+        // truthy) rather than its resolved true/false, so the "already granted" check
+        // below always passed - meaning RequestWebcam() fired getUserMedia()
+        // automatically on every page load, not just for returning visitors who'd
+        // already granted camera access. That's a real problem on iOS Safari
+        // specifically: it's notably stricter than other browsers about permission-gated
+        // APIs needing to originate from a direct user gesture, and an auto-fired
+        // getUserMedia() call outside a tap handler is a known source of instability
+        // there - plausibly what was crashing the WebContent process shortly after the
+        // real, tap-triggered getUserMedia() call in StartWebcam() fired right after it.
+        window.permissionsGranted = await IsCameraPermissionGranted();
       }
       initialize();
       window.addEventListener("load", function () {
