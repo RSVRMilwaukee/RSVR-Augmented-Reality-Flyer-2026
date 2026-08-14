@@ -121,17 +121,6 @@
         
         document.getElementById("startARButton").style.visibility = "visible";
         document.getElementById("spinner").style.visibility = "hidden";
-        // Missing await here previously assigned the pending Promise itself (always
-        // truthy) rather than its resolved true/false, so the "already granted" check
-        // below always passed - meaning RequestWebcam() fired getUserMedia()
-        // automatically on every page load, not just for returning visitors who'd
-        // already granted camera access. That's a real problem on iOS Safari
-        // specifically: it's notably stricter than other browsers about permission-gated
-        // APIs needing to originate from a direct user gesture, and an auto-fired
-        // getUserMedia() call outside a tap handler is a known source of instability
-        // there - plausibly what was crashing the WebContent process shortly after the
-        // real, tap-triggered getUserMedia() call in StartWebcam() fired right after it.
-        window.permissionsGranted = await IsCameraPermissionGranted();
       }
       initialize();
       window.addEventListener("load", function () {
@@ -215,11 +204,23 @@
             progressBarFull.style.width = 100 * progress + "%";
           }).then((unityInstance) => {
             loadingBar.style.display = "none";
-            
+            // Previously also called RequestWebcam() here whenever the Permissions API
+            // reported the camera was already granted (true for any returning visitor) -
+            // that fired its own getUserMedia() call, then immediately stopped the stream
+            // again, purely to "pre-warm" permission. Nothing in this project ever read
+            // the result of that. Meanwhile ARCamera.cs's Start() coroutine independently
+            // and unconditionally calls StartCamera() -> WebGLStartCamera() -> the real
+            // StartWebcam() moments later regardless of any of this - so on any device
+            // where permission was already granted, both getUserMedia() calls fired
+            // back-to-back with no synchronization between them (StartWebcam()'s own
+            // "wait for any pending request" guard checks requestingForPermissions AFTER
+            // its own getUserMedia() call, not before, so it never actually prevented the
+            // overlap). Two near-simultaneous negotiations for the same physical camera is
+            // a plausible cause of the repeating "loads, camera prompt flickers, resets to
+            // the start screen" crash loop seen on-device on iOS Safari specifically on
+            // phones that had already granted permission in an earlier visit - removed the
+            // redundant pre-warm call rather than trying to patch the race.
             window.unityInstance = unityInstance;
-            if(window.permissionsGranted) {
-              RequestWebcam();
-            }
           }).catch((message) => {
             alert(message);
           });
@@ -235,22 +236,6 @@
           audio: false
       };
       window.requestingForPermissions = false;
-      async function RequestWebcam(){
-          window.requestingForPermissions = true;
-          try{
-              window.webcamStream = await navigator.mediaDevices.getUserMedia(window.WEBCAM_SETTINGS);
-              console.log("Webcam access granted");
-              requestingForPermissions = false;
-              // Immediately stop the stream to release the camera
-              StopWebcam();
-          }
-          catch (err) {
-              //user denied camera permission - show error panel
-              console.error("getUserMedia error - " , err);
-              ShowError("Failed to start the experience. Camera permission was denied");
-              window.requestingForPermissions = false;
-          }           
-      }
       function StopWebcam(){
           console.log("stopping camera");
           window.webcamStream.getTracks().forEach(track => track.stop());    
@@ -354,29 +339,6 @@
           const video = document.querySelector("#webcam-video");
           video.srcObject = webcamStream;
           await arCamera.startWebcam(video);
-      }
-      async function IsCameraPermissionGranted() {
-          if (!navigator.permissions || !navigator.mediaDevices) {
-              console.log("Permissions API or mediaDevices not supported.");
-              return false;
-          }
-          try {
-              // Query the status of the camera permission
-              const permissionStatus = await navigator.permissions.query({ name: "camera" });
-              if (permissionStatus.state === "granted") {
-              console.log("Camera permission has already been granted.");
-              return true;
-              } else if (permissionStatus.state === "prompt") {
-              console.log("Camera permission is promptable.");
-              return false;
-              } else {
-              console.log("Camera permission has been denied.");
-              return false;
-              }
-          } catch (error) {
-              console.log("Error checking camera permission:", error);
-              return false;
-          }
       }
       function ShowError(error){
           var errorDiv = document.getElementById("errorDiv");
