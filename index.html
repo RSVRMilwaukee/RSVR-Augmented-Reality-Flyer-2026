@@ -35,7 +35,8 @@
     <video id="webcam-video" muted autoplay playsinline style="width:1px;position:absolute"></video>
     <canvas id="video-canvas" style="width:100%; height:100%; object-fit:cover; position:absolute"></canvas>
     <div id="startARDiv" class="ctaDiv" style="background: #2f2e32">
-      <select id="chooseCamSel" style="display: none; background: transparent; border: .05vh solid white; border-radius: max(0.5vw, 0.5vh); color:white; font-size: max(1.5vw, 1.5vh); position: absolute; bottom: 80px" 
+      <p id="chooseCamLabel" style="display: none; text-align: center; color: #ffffffaa; font-size: max(1.2vw, 1.2vh); position: absolute; bottom: 108px; left: 0; right: 0;">Camera looks zoomed in? Try a different one below:</p>
+      <select id="chooseCamSel" style="display: none; background: transparent; border: .05vh solid white; border-radius: max(0.5vw, 0.5vh); color:white; font-size: max(1.5vw, 1.5vh); position: absolute; bottom: 80px"
         onchange="SelectCam()"></select>
       <p style="text-align: center; width:min(60vw, 60vh);">This augmented reality experience requires access to your device's camera</p>
       <button id="startARButton" onclick="StartAR()" style="visibility: hidden">ALLOW ACCESS</button>
@@ -299,6 +300,7 @@
           });
           var select = document.getElementById("chooseCamSel");
           select.style.display = "";
+          document.getElementById("chooseCamLabel").style.display = "";
           var count = 0;
           //reverse array because some Android phones can't distinguish front and back cams at first load
           //and when this happens, most of the time, front cam goes first and back cam goes last
